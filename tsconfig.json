@@ -1,0 +1,20 @@
+{
+    "compilerOptions": {
+        "baseUrl": "./src",
+        "paths": {
+            "react-chat/*": ["./*"]
+        },
+        "jsx": "react",
+        // "module": "commonjs",
+        // "moduleResolution": "node",
+        // "target": "es5",
+        // "lib": ["es6", "dom"],
+        "noImplicitAny": false,
+        "noImplicitThis": true,
+        "removeComments": false,
+        "experimentalDecorators": true,
+        "allowSyntheticDefaultImports": true,
+        // "allowJs": false,
+    },
+    "include": ["src/**/*"],
+}

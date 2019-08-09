@@ -1,0 +1,57 @@
+{
+  "name": "react-chat",
+  "version": "1.0.0",
+  "main": "build/index.js",
+  "license": "MIT",
+  "scripts": {
+    "build:static": "parcel build test/index.html --out-dir test/build",
+    "dev": "rimraf test/dist && parcel test/index.html --out-dir test/dist --open",
+    "build:types": "tsc --declaration --declarationDir build --declarationMap --emitDeclarationOnly",
+    "build:cjs": "cross-env NODE_ENV=production BABEL_ENV=cjs babel --config-file ./babel.config.js ./src --out-dir ./build --extensions .ts,.tsx",
+    "build:esm": "cross-env NODE_ENV=production BABEL_ENV=esm babel --config-file ./babel.config.js ./src --out-dir ./build/esm --extensions .ts,.tsx",
+    "build": "yarn build:types && yarn build:cjs && yarn build:esm",
+    "prebuild": "rimraf build",
+    "release": "yarn build && npm publish build --tag latest",
+    "pretty": "prettier --write src/**/*",
+    "serve": "serve -l 8686 --single .\\test\\dist\\"
+  },
+  "peerDependencies": {
+    "react": "^16.8.6",
+    "react-dom": "^16.8.6"
+  },
+  "dependencies": {
+    "@babel/runtime": "^7.5.5",
+    "@material-ui/core": "^4.3.1",
+    "@material-ui/icons": "^4.2.1",
+    "audio-recorder-polyfill": "^0.1.6",
+    "lodash": "^4.17.15",
+    "react": "^16.0.0",
+    "react-dom": "^16.8.6",
+    "unfetch": "^4.1.0",
+    "uuid": "^3.3.2"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.5.5",
+    "@babel/core": "^7.5.5",
+    "@babel/plugin-proposal-class-properties": "^7.5.5",
+    "@babel/plugin-proposal-object-rest-spread": "^7.5.5",
+    "@babel/plugin-transform-object-assign": "^7.2.0",
+    "@babel/plugin-transform-runtime": "^7.5.5",
+    "@babel/preset-env": "^7.5.5",
+    "@babel/preset-react": "^7.0.0",
+    "@babel/preset-typescript": "^7.3.3",
+    "@types/node": "^12.7.1",
+    "@types/react": "^16.8.24",
+    "@types/react-dom": "^16.8.5",
+    "cross-env": "^5.2.0",
+    "parcel-bundler": "^1.12.3",
+    "prettier": "^1.18.2",
+    "rimraf": "^2.6.3",
+    "serve": "^11.1.0",
+    "typescript": "^3.5.3"
+  },
+  "sideEffects": false,
+  "alias": {
+    "react-chat": "./src"
+  }
+}

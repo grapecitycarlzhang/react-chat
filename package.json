@@ -16,8 +16,7 @@
     "serve": "serve -l 8686 --single .\\test\\dist\\"
   },
   "peerDependencies": {
-    "react": "^16.8.6",
-    "react-dom": "^16.8.6"
+
   },
   "dependencies": {
     "@babel/runtime": "^7.5.5",

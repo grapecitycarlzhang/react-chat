@@ -5,42 +5,89 @@ import { guid } from "react-chat/utils/func";
 import debounce from 'lodash/debounce';
 declare var MediaRecorder;
 MediaRecorder = require("audio-recorder-polyfill");
-import puppy from 'react-chat/puppy.png'
-const user = puppy//"https://forum.rasa.com/user_avatar/forum.rasa.com/juste/45/15_2.png";
-const bot =
-    "https://image.shutterstock.com/image-vector/robot-icon-bot-sign-design-260nw-715962319.jpg";
+// import puppy from 'react-chat/puppy.png'
+import puppy from 'react-chat/puppy-4-06.jpg'
+const user = puppy
+const bot = "https://image.shutterstock.com/image-vector/robot-icon-bot-sign-design-260nw-715962319.jpg";
 
-const messageDelay = 800;
+const messageDelay = 200;
+type ChatMessage = { chatBotApi: string, conversationId: string, message?: string, voice?: any }
+type ChatResponse = { messages: any[] }
 
-function startRecord() {
+function sendMessage({ chatBotApi, conversationId, message, voice }: ChatMessage) {
+    if (message === "" && voice === null) return;
+
+    let form = new FormData();
+    form.append("message", message || '');
+    form.append("voice", voice || null);
+    form.append("conversationId", conversationId);
+
+    return fetch(
+        chatBotApi,
+        {
+            method: "POST",
+            body: form,
+        }
+    ).then(response => {
+        if (response.ok) {
+            return response.json()
+        }
+    })
+}
+function chatWithBot(message: ChatMessage) {
+    return sendMessage(message).then(parseMessages)
+}
+function getBotMesage(message) {
+    return {
+        message: message,
+        time: Date.now(),
+        user: {
+            avatar: bot,
+            name: "Cute Justina Bot :)"
+        },
+        id: guid()
+    }
+}
+function parseMessages({ messages }: ChatResponse) {
+    // const responseMessages = []
+    // messages.forEach(message => {
+    //     if (message.text) {
+    //         message.type = 'text'
+    //         responseMessages.push(getBotMesage({ ...message }))
+    //     }
+    //     if (message.buttons) {
+    //         message.type = 'buttons'
+    //         responseMessages.push(getBotMesage({ ...message }))
+    //     }
+    // })
+    // return responseMessages
+    return messages.map((message) => {
+        if (message.text) {
+            message.type = 'text'
+        }
+        return getBotMesage(message)
+    });
+}
+function chatToBot(chatBotApi, conversationId) {
+    return (message: string) => {
+        return chatWithBot({ chatBotApi, conversationId, message })
+    }
+}
+
+function startRecord(chatBotApi, conversationId) {
     return navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
         const recorder = new MediaRecorder(stream);
 
         const audio = new Promise((resovle, reject) => {
             recorder.addEventListener("dataavailable", e => {
-                let form = new FormData();
-                form.append("file", e.data);
 
                 const url = URL.createObjectURL(e.data);
 
-                const text = fetch("https://miroservice.azurewebsites.net/api/speech", {
-                    method: "POST",
-                    body: form,
-                }).then(response => {
-                    return response.ok
-                        ? response
-                            .json()
-                            .then(resp =>
-                                resp.identifiable === "success" && resp.text !== 'NoMatch'
-                                    ? `I heard you say ${resp.text}`
-                                    : [
-                                        "Sorry, I didn’t understand that.",
-                                        "May I beg your pardon?",
-                                        "Pardon me."
-                                    ][Math.floor(Math.random() * 3)]
-                            )
-                        : Promise.resolve("Did not hear clearly");
-                });
+                const text = chatWithBot({
+                    chatBotApi,
+                    conversationId,
+                    voice: e.data
+                })
 
                 resovle({ url, text });
             });
@@ -58,7 +105,7 @@ function stopRecord(recorder) {
 }
 let shiftQueuedMessages
 let currentRecorder
-export default function ConnectedChat({ welcome, title }) {
+export default function ConnectedChat({ welcome, startMessage, title, conversationId, chatApi, defaultVoiceInput = true }) {
     const [messages, setMessages] = useState([]);
     const [messageQueue, setMessageQueue] = useState([]);
     const [enQueued, setEnQueuedEvent] = useState(Date.now());
@@ -68,9 +115,14 @@ export default function ConnectedChat({ welcome, title }) {
         setEnQueuedEvent(Date.now());
     }
 
+    const getBotResponse = chatToBot(chatApi, conversationId)
+
     const startWaiting = waitingResponse(responseComing);
 
     const stopWaiting = comingResponse(responseComing);
+
+    const stopWaitings = comingResponses(responseComing);
+
 
     useEffect(() => {
 
@@ -101,6 +153,10 @@ export default function ConnectedChat({ welcome, title }) {
             };
             setMessages([message]);
         }
+        if (startMessage) {
+            getBotResponse(startMessage)
+                .then(messagesComing(messageQueue, responseComing))
+        }
     }, []);
 
     useEffect(() => shiftQueuedMessages(messageQueue, messages), [enQueued]);
@@ -109,6 +165,7 @@ export default function ConnectedChat({ welcome, title }) {
         <VoiceChat
             title={title}
             messages={messages.sort((pre, cur) => pre.time - cur.time)}
+            defaultVoiceInput={defaultVoiceInput}
             onStartRecord={() => {
 
                 const userWaitingId = startWaiting(
@@ -119,7 +176,7 @@ export default function ConnectedChat({ welcome, title }) {
                     }
                 )
 
-                startRecord().then(({ recorder, audio }) => {
+                startRecord(chatApi, conversationId).then(({ recorder, audio }) => {
                     currentRecorder = recorder;
                     audio.then(({ url, text }) => {
 
@@ -140,12 +197,9 @@ export default function ConnectedChat({ welcome, title }) {
                             }
                         )
 
-                        text.then(text => stopWaiting(
+                        text.then(messages => stopWaitings(
                             messageQueue,
-                            {
-                                type: "text",
-                                text
-                            },
+                            messages,
                             botWaitingId
                         ));
                     });
@@ -155,7 +209,7 @@ export default function ConnectedChat({ welcome, title }) {
                 currentRecorder && stopRecord(currentRecorder);
             }}
             onTextTyping={(text) => {
-                responseComing(appendMessage(
+                !text.startsWith('/gs') && responseComing(appendMessage(
                     messageQueue,
                     {
                         type: "text",
@@ -167,17 +221,9 @@ export default function ConnectedChat({ welcome, title }) {
                     }
                 ))
 
-                responseComing(appendMessage(
-                    messageQueue,
-                    {
-                        type: "text",
-                        text: `I heard you say ${text}`
-                    },
-                    {
-                        avatar: bot,
-                        name: "Cute Justina Bot :)"
-                    }
-                ))
+                getBotResponse(text)
+                    .then(messagesComing(messageQueue, responseComing))
+
             }}
         ></VoiceChat>
     );
@@ -217,4 +263,18 @@ function comingResponse(enQueue) {
         null,
         waitingId
     ))
+}
+
+function comingResponses(enQueue) {
+    return (messageQueue, messages, waitingId) => {
+        messages.length > 0 && (messages[0].id = waitingId);
+        messagesComing(messageQueue, enQueue)(messages)
+    }
+}
+
+function messagesComing(messageQueue, responseComing) {
+    return (messages) => {
+        messageQueue.push(...messages)
+        responseComing(messageQueue)
+    }
 }

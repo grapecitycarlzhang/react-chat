@@ -1,1 +1,1 @@
-export { default } from "react-chat/components/connected-chat";
+export { default } from "react-chat/components/initialized-chat";

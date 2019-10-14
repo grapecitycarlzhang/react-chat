@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useState } from "react";
 import {
     createStyles,
@@ -50,15 +50,15 @@ function ChatHeader({ title }) {
     return (
         <AppBar position="fixed" color="primary">
             <Toolbar>
-                <IconButton edge="start" color="inherit">
+                {/* <IconButton edge="start" color="inherit">
                     <ArrowBack />
-                </IconButton>
+                </IconButton> */}
                 <Typography variant="h6" className={classes.title}>
                     {title}
                 </Typography>
-                <IconButton edge="end" color="inherit">
+                {/* <IconButton edge="end" color="inherit">
                     <MoreHoriz />
-                </IconButton>
+                </IconButton> */}
             </Toolbar>
         </AppBar>
     );
@@ -96,9 +96,9 @@ const theme = createMuiTheme({
     }
 });
 
-function ChatFooter({ onStartRecord, onStopRecord, onTextTyping }) {
+function ChatFooter({ onStartRecord, onStopRecord, onTextTyping, defaultVoiceInput }) {
     const classes = useChatFooterStyles({});
-    const [isVoiceInput, setVoiceInput] = useState(true);
+    const [isVoiceInput, setVoiceInput] = useState(defaultVoiceInput);
     const [isRecord, setRecord] = useState(false);
     return (
         <AppBar position="fixed" color="primary" className={classes.appBar}>
@@ -182,6 +182,16 @@ const useBotItemStyles = makeStyles({
     listItemAvatar: {
         display: "flex",
         justifyContent: "flex-end"
+    },
+    image: {
+        height: 160
+    },
+    video: {
+        height: 160
+    },
+    buttons: {
+        height: 100,
+        cursor: "pointer"
     }
 });
 
@@ -196,11 +206,16 @@ const ChatCard = withStyles({
     }
 })(({ float, classes, children }: any) => <Card className={float === 'right' ? classes.right : classes.left}><CardContent>{children}</CardContent></Card>)
 
-function BotItem({ message: { type, text }, avatar }) {
+function BotItem({ message: { type, text, medias, pages }, avatar, onTextTyping }) {
     const classes = useBotItemStyles({});
     return (
         <ListItem>
             {type === "text" && <ListItemText primary={<ChatCard float='right'>{text}</ChatCard>} />}
+            {type === "buttons" && <ListItemText primary={<ChatCard float='right'><div>
+                {pages.map(btn => <img key={btn.url} className={classes.buttons} src={btn.url} onClick={() => btn.payload !== '/back' && onTextTyping(btn.payload)}></img>)}
+            </div></ChatCard>} />}
+            {type === "image" && <ListItemText primary={<ChatCard float='right'><img src={pages[0].url} className={classes.image}></img></ChatCard>} />}
+            {type === "video" && <ListItemText primary={<ChatCard float='right'><video src={medias[0].url} className={classes.video} onEnded={() => medias[0].payload && onTextTyping(medias[0].payload)} webkit-playsinline='true' playsInline autoPlay controls ></video></ChatCard>} />}
             {type === "waiting" && <ListItemText className={classes.listItemWaiting} primary={<CircularProgress size={20} />} />}
             <ListItemAvatar className={classes.listItemAvatar}>
                 <Avatar alt="Profile Picture" src={avatar} />
@@ -226,25 +241,30 @@ function PersonItem({ message: { type, text, url }, avatar }) {
         </ListItem>
     );
 }
-function getListItem(message, { avatar, name }) {
+function getListItem(message, { avatar, name }, onTextTyping) {
     return name === "Cute Justina Bot :)" ? (
-        <BotItem message={message} avatar={avatar} />
+        <BotItem message={message} avatar={avatar} onTextTyping={onTextTyping} />
     ) : (
             <PersonItem message={message} avatar={avatar} />
         );
 }
 
-function ChatList({ messages }) {
+function ChatList({ messages, onTextTyping }) {
     const classes = useChatListStyles({});
 
+    useEffect(() => {
+        const dom = document.querySelector('.message-container')
+        dom.scrollTop = dom.scrollHeight
+    }, [messages])
+
     return (
-        <div className={classes.root}>
+        <div className={`message-container ${classes.root}`}>
             <List className={classes.list}>
                 {messages.map(({ id, message, user }) => (
                     <React.Fragment key={id}>
                         {/* {id === 1 && <ListSubheader className={classes.subheader}>Today</ListSubheader>} */}
                         {/* {id === 3 && <ListSubheader className={classes.subheader}>Yesterday</ListSubheader>} */}
-                        {getListItem(message, user)}
+                        {getListItem(message, user, onTextTyping)}
                     </React.Fragment>
                 ))}
             </List>
@@ -269,13 +289,14 @@ export default function VoiceChat({
     onStartRecord,
     onStopRecord,
     onTextTyping,
+    defaultVoiceInput = true,
 }) {
     return (
         <ChatContainer>
             <CssBaseline />
             <ChatHeader title={title} />
-            <ChatList messages={messages} />
-            <ChatFooter onStartRecord={onStartRecord} onStopRecord={onStopRecord} onTextTyping={onTextTyping} />
+            <ChatList messages={messages} onTextTyping={onTextTyping} />
+            <ChatFooter onStartRecord={onStartRecord} onStopRecord={onStopRecord} onTextTyping={onTextTyping} defaultVoiceInput={defaultVoiceInput} />
         </ChatContainer>
     );
 }
